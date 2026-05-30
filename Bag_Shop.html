@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Bag Edit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --sand:      #f5f0e8;
+      --parchment: #ede7d9;
+      --warm-dark: #1c1814;
+      --brown:     #6b4f3a;
+      --accent:    #c9855a;
+      --muted:     #9a8f84;
+      --border:    #ddd5c8;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--sand);
+      color: var(--warm-dark);
+      min-height: 100vh;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.6rem 4rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--sand);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+
+    .logo span { font-style: italic; color: var(--accent); }
+
+    nav {
+      display: flex;
+      gap: 2rem;
+      font-size: 0.78rem;
+      font-weight: 400;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    nav a { text-decoration: none; color: inherit; transition: color 0.2s; }
+    nav a:hover { color: var(--warm-dark); }
+
+    .header-actions {
+      display: flex;
+      gap: 1.2rem;
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .header-actions span:hover { color: var(--warm-dark); }
+
+    .hero {
+      padding: 5rem 4rem 3.5rem;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 2rem;
+    }
+
+    .hero-title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(3rem, 7vw, 6rem);
+      font-weight: 400;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+
+    .hero-title em { font-style: italic; color: var(--accent); }
+
+    .hero-meta {
+      text-align: right;
+      font-size: 0.72rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      line-height: 2.2;
+    }
+
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      padding: 1rem 4rem;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.72rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      overflow-x: auto;
+    }
+
+    .filter-bar span { white-space: nowrap; margin-right: 0.4rem; }
+
+    .pill {
+      padding: 0.35rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: inherit;
+      letter-spacing: inherit;
+      text-transform: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .pill:hover, .pill.active {
+      background: var(--warm-dark);
+      border-color: var(--warm-dark);
+      color: var(--sand);
+    }
+
+    .grid-section { padding: 3rem 4rem 6rem; }
+
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 2.5rem 2rem;
+    }
+
+    /* ── Loading & Error states ── */
+    .state-message {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      color: var(--muted);
+      font-size: 0.72rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      padding: 4rem 0;
+    }
+
+    .spinner {
+      width: 16px; height: 16px;
+      border: 1.5px solid var(--border);
+      border-top-color: var(--muted);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Cards ── */
+    .card {
+      display: flex;
+      flex-direction: column;
+      cursor: pointer;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: rise 0.55s forwards;
+    }
+
+    @keyframes rise { to { opacity: 1; transform: none; } }
+
+    .card-img-wrap {
+      position: relative;
+      overflow: hidden;
+      background: var(--parchment);
+      aspect-ratio: 3 / 4;
+      border-radius: 4px;
+    }
+
+    .card-img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    .card:hover .card-img-wrap img { transform: scale(1.06); }
+
+    .quick-add {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      background: var(--warm-dark);
+      color: var(--sand);
+      text-align: center;
+      font-size: 0.68rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      padding: 0.85rem;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+    }
+
+    .card:hover .quick-add { transform: translateY(0); }
+
+    .card-tag {
+      position: absolute;
+      top: 1rem; left: 1rem;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.58rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      padding: 0.28rem 0.65rem;
+      border-radius: 2px;
+    }
+
+    .card-tag.sale { background: var(--brown); }
+
+    .card-body {
+      padding: 1rem 0 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .card-cat {
+      font-size: 0.62rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .card-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem;
+      font-weight: 400;
+      line-height: 1.25;
+    }
+
+    .card-desc {
+      font-size: 0.75rem;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-top: 0.1rem;
+    }
+
+    .card-price {
+      font-size: 0.82rem;
+      letter-spacing: 0.05em;
+      color: var(--brown);
+      margin-top: 0.2rem;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem 4rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.68rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    @media (max-width: 768px) {
+      header { padding: 1.2rem 1.5rem; }
+      nav { display: none; }
+      .header-actions { display: none; }
+      .hero { padding: 2.5rem 1.5rem 2rem; flex-direction: column; align-items: flex-start; }
+      .hero-meta { text-align: left; }
+      .filter-bar { padding: 0.8rem 1.5rem; }
+      .grid-section { padding: 2rem 1.5rem 4rem; }
+      footer { padding: 1.5rem; flex-direction: column; gap: 0.5rem; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">The Bag <span>Edit</span></div>
+  <nav>
+    <a href="#">New In</a>
+    <a href="#">Leather</a>
+    <a href="#">Canvas</a>
+    <a href="#">Sale</a>
+  </nav>
+  <div class="header-actions">
+    <span>Search</span>
+    <span>Cart (0)</span>
+  </div>
+</header>
+
+<section class="hero">
+  <h1 class="hero-title">The<br /><em>Collection</em></h1>
+  <div class="hero-meta">
+    <p>Handpicked</p>
+    <p id="hero-count">— pieces</p>
+    <p>SS 2026</p>
+  </div>
+</section>
+
+<div class="filter-bar">
+  <span>Filter:</span>
+  <button class="pill active" onclick="applyFilter('all', this)">All</button>
+  <!-- Category pills are injected dynamically -->
+  <span id="dynamic-pills"></span>
+</div>
+
+<div class="grid-section">
+  <div class="product-grid" id="grid">
+    <div class="state-message">
+      <div class="spinner"></div>
+      Loading collection…
+    </div>
+  </div>
+</div>
+
+<footer>
+  <span>© 2026 The Bag Edit</span>
+  <span>Free shipping on orders over $100</span>
+</footer>
+
+<script>
+  // ─── Google Sheet CSV URL ────────────────────────────────────────────────────
+  // Columns expected (row 1 = headers, case-insensitive):
+  //   Name | Category | Description | Price | Badge | Image
+  // Sheet must be published: File → Share → Publish to web → CSV
+  // ─────────────────────────────────────────────────────────────────────────────
+  const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDfEr7l4IsX7GBah4K-U4Vx0G_RegqCAw7OLjPcd0ByMgZqmfhxmmy9TF1YhOb8NF0rSOyEwAGljj1/pub?output=csv";
+
+  let allProducts = [];
+  let activeFilter = 'all';
+
+  // ── Robust CSV parser (handles quoted fields with commas/newlines) ────────────
+  function parseCSV(text) {
+    const rows = [];
+    const lines = text.replace(/\r\n|\r/g, '\n').split('\n');
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const cols = [];
+      let cur = '', inQ = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (inQ && line[i + 1] === '"') { cur += '"'; i++; }
+          else { inQ = !inQ; }
+        } else if (ch === ',' && !inQ) {
+          cols.push(cur.trim()); cur = '';
+        } else {
+          cur += ch;
+        }
+      }
+      cols.push(cur.trim());
+      rows.push(cols);
+    }
+    return rows;
+  }
+
+  // ── Map CSV rows → product objects using header row ──────────────────────────
+  function rowsToProducts(rows) {
+    if (rows.length < 2) return [];
+    // Normalise headers: lowercase, strip whitespace
+    const headers = rows[0].map(h => h.toLowerCase().trim());
+    const idx = key => headers.indexOf(key);
+
+    const iName  = idx('name');
+    const iCat   = idx('category');
+    const iDesc  = idx('description');
+    const iPrice = idx('price');
+    const iBadge = idx('badge');
+    const iImage = idx('image');
+
+    return rows.slice(1).map(cols => {
+      const name = cols[iName] || '';
+      if (!name) return null;
+      const badge = (cols[iBadge] || '').trim();
+      return {
+        name,
+        category:    (cols[iCat]   || '').trim(),
+        description: (cols[iDesc]  || '').trim(),
+        price:        parseFloat((cols[iPrice] || '0').replace(/[^0-9.]/g, '')) || 0,
+        badge,
+        isSale:       badge.toLowerCase() === 'sale',
+        image:        (cols[iImage] || '').trim(),
+      };
+    }).filter(Boolean);
+  }
+
+  // ── Format price ─────────────────────────────────────────────────────────────
+  function fmt(n) {
+    return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 0 });
+  }
+
+  // ── Build dynamic category filter pills ──────────────────────────────────────
+  function buildPills(products) {
+    const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
+    const container = document.getElementById('dynamic-pills');
+    container.innerHTML = categories.map(cat =>
+      `<button class="pill" onclick="applyFilter('${cat.toLowerCase()}', this)">${cat}</button>`
+    ).join('');
+  }
+
+  // ── Render cards ─────────────────────────────────────────────────────────────
+  function renderCards(list) {
+    const grid = document.getElementById('grid');
+    if (!list.length) {
+      grid.innerHTML = `<div class="state-message">No products found.</div>`;
+      return;
+    }
+    grid.innerHTML = list.map((p, i) => `
+      <div class="card" data-tag="${p.category.toLowerCase()}"
+           style="animation-delay:${(i * 0.08 + 0.05).toFixed(2)}s">
+        <div class="card-img-wrap">
+          ${p.image
+            ? `<img src="${p.image}" alt="${p.name}" loading="lazy" />`
+            : `<div style="width:100%;height:100%;background:var(--parchment);"></div>`}
+          ${p.badge
+            ? `<div class="card-tag${p.isSale ? ' sale' : ''}">${p.badge}</div>`
+            : ''}
+          <div class="quick-add">Quick Add</div>
+        </div>
+        <div class="card-body">
+          <span class="card-cat">${p.category}</span>
+          <div class="card-name">${p.name}</div>
+          ${p.description ? `<div class="card-desc">${p.description}</div>` : ''}
+          <div class="card-price">${fmt(p.price)}</div>
+        </div>
+      </div>`
+    ).join('');
+  }
+
+  // ── Filter ───────────────────────────────────────────────────────────────────
+  function applyFilter(tag, btn) {
+    activeFilter = tag;
+    document.querySelectorAll('.pill').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    const filtered = tag === 'all'
+      ? allProducts
+      : allProducts.filter(p => p.category.toLowerCase() === tag);
+    renderCards(filtered);
+  }
+
+  // ── Show error ────────────────────────────────────────────────────────────────
+  function showError(msg) {
+    document.getElementById('grid').innerHTML =
+      `<div class="state-message">⚠ ${msg}</div>`;
+  }
+
+  // ── Load from Google Sheet ────────────────────────────────────────────────────
+  async function loadProducts() {
+    try {
+      const res = await fetch(CSV_URL);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      allProducts = rowsToProducts(parseCSV(text));
+
+      if (!allProducts.length) {
+        showError('No products found. Check that the sheet has data rows below the header.');
+        return;
+      }
+
+      // Update hero count
+      document.getElementById('hero-count').textContent = allProducts.length + ' pieces';
+
+      // Build category pills from actual sheet data
+      buildPills(allProducts);
+
+      // Render all products
+      renderCards(allProducts);
+
+    } catch (err) {
+      console.error(err);
+      showError(
+        'Could not load products. Make sure the Google Sheet is published as CSV ' +
+        '(File → Share → Publish to web).'
+      );
+    }
+  }
+
+  loadProducts();
+</script>
+</body>
+</html>
